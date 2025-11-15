@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="CyberBros Lab - Home">
+  <div class="card">
+    <h1 style="color: #667eea; margin-bottom: 1rem;">Welcome to CyberBros Lab</h1>
+    <p style="font-size: 1.2rem; line-height: 1.6; margin-bottom: 2rem;">
+      Your premier cybersecurity training platform. Practice your hacking skills in a safe, isolated environment with real-world challenges.
+    </p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 2rem;">
+      <div style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎯</div>
+        <h3>Multiple Challenges</h3>
+        <p>Web security, binary exploitation, cryptography, and more</p>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">☁️</div>
+        <h3>Instant VMs</h3>
+        <p>Get your own isolated VM in seconds</p>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">⏱️</div>
+        <h3>Auto Cleanup</h3>
+        <p>VMs automatically deleted after 2 hours</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="/login" class="btn" style="margin-right: 1rem;">Login</a>
+      <a href="/signup" class="btn btn-secondary">Sign Up</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom: 1rem;">How It Works</h2>
+    <ol style="line-height: 2; font-size: 1.1rem;">
+      <li>Sign up for a free account</li>
+      <li>Browse available challenges</li>
+      <li>Start a challenge to get your VM credentials</li>
+      <li>Connect via SSH and solve the challenge</li>
+      <li>Find the flag and level up your skills!</li>
+    </ol>
+  </div>
+</Layout>

@@ -1,0 +1,5 @@
+hetzner_api_token = "your-hetzner-api-token-here"
+server_name       = "cyberbros-challenge-01"
+server_type       = "cx11"
+image             = "ubuntu-20.04"
+location          = "nbg1"

@@ -1,0 +1,94 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Challenges - CyberBros Lab">
+  <div class="card">
+    <h1 style="color: #667eea; margin-bottom: 2rem;">Available Challenges</h1>
+    
+    <div id="error" class="error" style="display: none;"></div>
+    
+    <div style="margin-bottom: 2rem;">
+      <label for="difficulty-filter" style="margin-right: 1rem;">Filter by Difficulty:</label>
+      <select id="difficulty-filter" style="padding: 0.5rem; border-radius: 5px; border: 2px solid #e1e4e8;">
+        <option value="">All</option>
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option>
+        <option value="expert">Expert</option>
+      </select>
+    </div>
+    
+    <div id="challenges-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+      <p>Loading challenges...</p>
+    </div>
+  </div>
+
+  <script>
+    import { api } from '../lib/api';
+    import type { Challenge } from '../lib/api';
+
+    const container = document.getElementById('challenges-container') as HTMLDivElement;
+    const errorDiv = document.getElementById('error') as HTMLDivElement;
+    const difficultyFilter = document.getElementById('difficulty-filter') as HTMLSelectElement;
+
+    const difficultyColors: Record<string, string> = {
+      beginner: '#28a745',
+      intermediate: '#ffc107',
+      advanced: '#fd7e14',
+      expert: '#dc3545'
+    };
+
+    async function loadChallenges(difficulty?: string) {
+      try {
+        errorDiv.style.display = 'none';
+        container.innerHTML = '<p>Loading challenges...</p>';
+        
+        const filters: any = {};
+        if (difficulty) filters.difficulty = difficulty;
+        
+        const { challenges } = await api.getChallenges(filters);
+        
+        if (challenges.length === 0) {
+          container.innerHTML = '<p>No challenges available.</p>';
+          return;
+        }
+        
+        container.innerHTML = challenges.map((challenge: Challenge) => `
+          <div class="card" style="margin: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+              <h3 style="margin: 0;">${challenge.title}</h3>
+              <span style="background: ${difficultyColors[challenge.difficulty]}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; text-transform: capitalize;">
+                ${challenge.difficulty}
+              </span>
+            </div>
+            <p style="color: #666; margin-bottom: 1rem; line-height: 1.5;">${challenge.description}</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e1e4e8;">
+              <div>
+                <span style="color: #666; font-size: 0.9rem;">${challenge.category}</span>
+                <span style="color: #667eea; font-weight: 600; margin-left: 1rem;">${challenge.points} pts</span>
+              </div>
+              <a href="/challenge/${challenge._id}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Start</a>
+            </div>
+          </div>
+        `).join('');
+      } catch (error: any) {
+        errorDiv.textContent = error.message || 'Failed to load challenges';
+        errorDiv.style.display = 'block';
+        container.innerHTML = '';
+      }
+    }
+
+    difficultyFilter?.addEventListener('change', () => {
+      const difficulty = difficultyFilter.value;
+      loadChallenges(difficulty || undefined);
+    });
+
+    // Check if user is logged in
+    if (!api.getToken()) {
+      window.location.href = '/login';
+    } else {
+      loadChallenges();
+    }
+  </script>
+</Layout>

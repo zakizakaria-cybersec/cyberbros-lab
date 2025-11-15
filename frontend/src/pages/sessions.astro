@@ -1,0 +1,101 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="My Sessions - CyberBros Lab">
+  <div class="card">
+    <h1 style="color: #667eea; margin-bottom: 2rem;">My Active Sessions</h1>
+    
+    <div id="error" class="error" style="display: none;"></div>
+    <div id="success" class="success" style="display: none;"></div>
+    
+    <div id="sessions-container">
+      <p>Loading sessions...</p>
+    </div>
+  </div>
+
+  <script>
+    import { api } from '../lib/api';
+
+    const container = document.getElementById('sessions-container') as HTMLDivElement;
+    const errorDiv = document.getElementById('error') as HTMLDivElement;
+    const successDiv = document.getElementById('success') as HTMLDivElement;
+
+    async function loadSessions() {
+      try {
+        errorDiv.style.display = 'none';
+        container.innerHTML = '<p>Loading sessions...</p>';
+        
+        const { sessions } = await api.getActiveSessions();
+        
+        if (sessions.length === 0) {
+          container.innerHTML = '<p>You have no active sessions.</p>';
+          return;
+        }
+        
+        container.innerHTML = sessions.map((session: any) => `
+          <div class="card" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <h3 style="margin-bottom: 1rem; color: #667eea;">
+                  ${session.challengeId?.title || 'Challenge'}
+                </h3>
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px; font-family: monospace; margin-bottom: 1rem;">
+                  <p><strong>IP:</strong> ${session.ipAddress}</p>
+                  <p><strong>Username:</strong> ${session.username}</p>
+                  <p><strong>Password:</strong> ${session.password}</p>
+                  <p><strong>Expires:</strong> ${new Date(session.expiresAt).toLocaleString()}</p>
+                  <p><strong>Status:</strong> <span style="color: ${session.status === 'running' ? '#28a745' : '#ffc107'}; text-transform: capitalize;">${session.status}</span></p>
+                </div>
+                <div style="background: #d4edda; padding: 0.75rem; border-radius: 5px; margin-bottom: 1rem;">
+                  <code>ssh ${session.username}@${session.ipAddress}</code>
+                </div>
+              </div>
+              <button class="btn btn-danger stop-btn" data-session-id="${session.id}" style="margin-left: 1rem;">
+                Stop VM
+              </button>
+            </div>
+          </div>
+        `).join('');
+        
+        // Add event listeners to stop buttons
+        document.querySelectorAll('.stop-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const sessionId = (e.target as HTMLButtonElement).dataset.sessionId!;
+            await stopSession(sessionId);
+          });
+        });
+      } catch (error: any) {
+        errorDiv.textContent = error.message || 'Failed to load sessions';
+        errorDiv.style.display = 'block';
+        container.innerHTML = '';
+      }
+    }
+
+    async function stopSession(sessionId: string) {
+      try {
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        
+        await api.stopChallenge(sessionId);
+        
+        successDiv.textContent = 'VM stopped successfully!';
+        successDiv.style.display = 'block';
+        
+        // Reload sessions
+        setTimeout(() => {
+          loadSessions();
+        }, 1000);
+      } catch (error: any) {
+        errorDiv.textContent = error.message || 'Failed to stop VM';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    if (!api.getToken()) {
+      window.location.href = '/login';
+    } else {
+      loadSessions();
+    }
+  </script>
+</Layout>

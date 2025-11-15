@@ -1,0 +1,130 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Challenge - CyberBros Lab">
+  <div id="loading" class="card">
+    <p>Loading challenge...</p>
+  </div>
+
+  <div id="challenge-content" style="display: none;">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
+        <div>
+          <h1 id="challenge-title" style="color: #667eea; margin-bottom: 0.5rem;"></h1>
+          <div id="challenge-meta" style="display: flex; gap: 1rem; align-items: center;"></div>
+        </div>
+      </div>
+      
+      <div id="challenge-description" style="line-height: 1.8; margin-bottom: 2rem;"></div>
+      
+      <div id="error" class="error" style="display: none;"></div>
+      <div id="success" class="success" style="display: none;"></div>
+      
+      <button id="start-btn" class="btn">Start Challenge</button>
+      
+      <div id="vm-details" style="display: none; margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 5px;">
+        <h3 style="margin-bottom: 1rem;">VM Connection Details</h3>
+        <div style="background: #fff; padding: 1rem; border-radius: 5px; font-family: monospace;">
+          <p><strong>IP Address:</strong> <span id="vm-ip"></span></p>
+          <p><strong>Username:</strong> <span id="vm-username"></span></p>
+          <p><strong>Password:</strong> <span id="vm-password"></span></p>
+          <p><strong>Expires:</strong> <span id="vm-expires"></span></p>
+        </div>
+        <div style="margin-top: 1rem; padding: 1rem; background: #d4edda; border-radius: 5px;">
+          <p style="margin: 0; color: #155724;">
+            <strong>Connect via SSH:</strong><br>
+            <code id="ssh-command" style="display: block; margin-top: 0.5rem; user-select: all;"></code>
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card" id="hints-section">
+      <h3>Hints</h3>
+      <div id="hints-container"></div>
+    </div>
+  </div>
+
+  <script>
+    import { api } from '../../lib/api';
+
+    const challengeId = window.location.pathname.split('/').pop()!;
+    const loading = document.getElementById('loading') as HTMLDivElement;
+    const content = document.getElementById('challenge-content') as HTMLDivElement;
+    const errorDiv = document.getElementById('error') as HTMLDivElement;
+    const successDiv = document.getElementById('success') as HTMLDivElement;
+    const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+    const vmDetails = document.getElementById('vm-details') as HTMLDivElement;
+
+    const difficultyColors: Record<string, string> = {
+      beginner: '#28a745',
+      intermediate: '#ffc107',
+      advanced: '#fd7e14',
+      expert: '#dc3545'
+    };
+
+    async function loadChallenge() {
+      try {
+        const { challenge } = await api.getChallenge(challengeId);
+        
+        document.getElementById('challenge-title')!.textContent = challenge.title;
+        document.getElementById('challenge-meta')!.innerHTML = `
+          <span style="background: ${difficultyColors[challenge.difficulty]}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem; text-transform: capitalize;">
+            ${challenge.difficulty}
+          </span>
+          <span style="color: #666;">${challenge.category}</span>
+          <span style="color: #667eea; font-weight: 600;">${challenge.points} pts</span>
+        `;
+        document.getElementById('challenge-description')!.textContent = challenge.description;
+        
+        if (challenge.hints && challenge.hints.length > 0) {
+          document.getElementById('hints-container')!.innerHTML = challenge.hints.map((hint: string) => `
+            <p style="margin: 0.5rem 0;">💡 ${hint}</p>
+          `).join('');
+        } else {
+          document.getElementById('hints-section')!.style.display = 'none';
+        }
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+      } catch (error: any) {
+        loading.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    startBtn?.addEventListener('click', async () => {
+      try {
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        startBtn.disabled = true;
+        startBtn.textContent = 'Creating VM...';
+        
+        const { session } = await api.startChallenge(challengeId);
+        
+        document.getElementById('vm-ip')!.textContent = session.ipAddress;
+        document.getElementById('vm-username')!.textContent = session.username;
+        document.getElementById('vm-password')!.textContent = session.password;
+        document.getElementById('vm-expires')!.textContent = new Date(session.expiresAt).toLocaleString();
+        document.getElementById('ssh-command')!.textContent = `ssh ${session.username}@${session.ipAddress}`;
+        
+        vmDetails.style.display = 'block';
+        startBtn.style.display = 'none';
+        
+        successDiv.textContent = 'VM created successfully! Connection details are shown below.';
+        successDiv.style.display = 'block';
+      } catch (error: any) {
+        errorDiv.textContent = error.message || 'Failed to start challenge';
+        errorDiv.style.display = 'block';
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start Challenge';
+      }
+    });
+
+    if (!api.getToken()) {
+      window.location.href = '/login';
+    } else {
+      loadChallenge();
+    }
+  </script>
+</Layout>
