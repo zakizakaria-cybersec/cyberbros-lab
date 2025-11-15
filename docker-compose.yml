@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: cyberbros-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: cyberbros-lab
+    networks:
+      - cyberbros-network
+
+  backend:
+    build: ./backend
+    container_name: cyberbros-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    environment:
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/cyberbros-lab
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-key}
+      - HETZNER_API_TOKEN=${HETZNER_API_TOKEN}
+      - SCALEWAY_API_KEY=${SCALEWAY_API_KEY}
+      - SCALEWAY_API_SECRET=${SCALEWAY_API_SECRET}
+      - SCALEWAY_ORGANIZATION_ID=${SCALEWAY_ORGANIZATION_ID}
+      - VM_AUTO_DELETE_HOURS=2
+      - NODE_ENV=production
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - cyberbros-network
+
+  frontend:
+    build: ./frontend
+    container_name: cyberbros-frontend
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    depends_on:
+      - backend
+    environment:
+      - PUBLIC_API_URL=http://localhost:3000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - cyberbros-network
+
+networks:
+  cyberbros-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

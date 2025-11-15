@@ -1,0 +1,62 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Login - CyberBros Lab">
+  <div class="card" style="max-width: 500px; margin: 0 auto;">
+    <h1 style="color: #667eea; margin-bottom: 2rem; text-align: center;">Login</h1>
+    
+    <div id="error" class="error" style="display: none;"></div>
+    <div id="success" class="success" style="display: none;"></div>
+    
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required />
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required />
+      </div>
+      
+      <button type="submit" class="btn" style="width: 100%;">Login</button>
+    </form>
+    
+    <p style="text-align: center; margin-top: 1.5rem;">
+      Don't have an account? <a href="/signup" style="color: #667eea;">Sign Up</a>
+    </p>
+  </div>
+
+  <script>
+    import { api } from '../lib/api';
+
+    const form = document.getElementById('login-form') as HTMLFormElement;
+    const errorDiv = document.getElementById('error') as HTMLDivElement;
+    const successDiv = document.getElementById('success') as HTMLDivElement;
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      errorDiv.style.display = 'none';
+      successDiv.style.display = 'none';
+      
+      const formData = new FormData(form);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+
+      try {
+        await api.login(email, password);
+        successDiv.textContent = 'Login successful! Redirecting...';
+        successDiv.style.display = 'block';
+        
+        setTimeout(() => {
+          window.location.href = '/challenges';
+        }, 1500);
+      } catch (error: any) {
+        errorDiv.textContent = error.message || 'Failed to login';
+        errorDiv.style.display = 'block';
+      }
+    });
+  </script>
+</Layout>
