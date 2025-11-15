@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -37,7 +37,3 @@ class VMInstance(Base):
     # Relationships
     user = relationship("User", back_populates="vm_instances")
     challenge = relationship("Challenge", back_populates="vm_instances")
-
-
-# Import Text for ssh_key field
-from sqlalchemy import Text

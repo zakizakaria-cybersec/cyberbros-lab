@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.user import UserCreate, UserLogin, UserResponse, Token
 from ..services.auth_service import AuthService
+from ..utils.auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -26,7 +27,3 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_info(user = Depends(get_current_user)):
     """Get current user information"""
     return user
-
-
-# Import for dependency
-from ..utils.auth import get_current_user
