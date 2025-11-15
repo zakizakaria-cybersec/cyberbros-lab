@@ -79,7 +79,7 @@ import Layout from '../../layouts/Layout.astro';
         document.getElementById('challenge-description')!.textContent = challenge.description;
         
         if (challenge.hints && challenge.hints.length > 0) {
-          document.getElementById('hints-container')!.innerHTML = challenge.hints.map((hint: string, i: number) => `
+          document.getElementById('hints-container')!.innerHTML = challenge.hints.map((hint: string) => `
             <p style="margin: 0.5rem 0;">💡 ${hint}</p>
           `).join('');
         } else {
