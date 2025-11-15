@@ -1,0 +1,238 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #0a0a0a;
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  background-color: #1a1a1a;
+  padding: 20px 0;
+  margin-bottom: 40px;
+  border-bottom: 2px solid #00ff41;
+}
+
+.header h1 {
+  color: #00ff41;
+  text-align: center;
+  font-size: 2.5rem;
+}
+
+.form-container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 40px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.form-container h2 {
+  color: #00ff41;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #b0b0b0;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  background-color: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 16px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #00ff41;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #00ff41;
+  color: #0a0a0a;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn:hover {
+  background-color: #00cc33;
+}
+
+.btn:disabled {
+  background-color: #333;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.challenge-card {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  transition: border-color 0.3s;
+}
+
+.challenge-card:hover {
+  border-color: #00ff41;
+}
+
+.challenge-card h3 {
+  color: #00ff41;
+  margin-bottom: 10px;
+}
+
+.challenge-card .difficulty {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.challenge-card .difficulty.easy {
+  background-color: #2e7d32;
+}
+
+.challenge-card .difficulty.medium {
+  background-color: #f57c00;
+}
+
+.challenge-card .difficulty.hard {
+  background-color: #d32f2f;
+}
+
+.challenge-card p {
+  color: #b0b0b0;
+  margin-bottom: 15px;
+}
+
+.vm-details {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 30px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.vm-details h2 {
+  color: #00ff41;
+  margin-bottom: 30px;
+}
+
+.vm-info {
+  background-color: #0a0a0a;
+  padding: 20px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  margin-bottom: 20px;
+}
+
+.vm-info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #333;
+}
+
+.vm-info-item:last-child {
+  border-bottom: none;
+}
+
+.vm-info-item label {
+  color: #b0b0b0;
+  font-weight: bold;
+}
+
+.vm-info-item value {
+  color: #00ff41;
+  font-family: monospace;
+}
+
+.error {
+  color: #d32f2f;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.success {
+  color: #00ff41;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.loading {
+  text-align: center;
+  color: #b0b0b0;
+  margin: 50px 0;
+}
+
+.nav-links {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.nav-links a {
+  color: #00ff41;
+  text-decoration: none;
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+}
+
+.user-info {
+  text-align: center;
+  color: #b0b0b0;
+  margin-bottom: 20px;
+}
+
+.logout-btn {
+  background-color: #d32f2f;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.logout-btn:hover {
+  background-color: #b71c1c;
+}

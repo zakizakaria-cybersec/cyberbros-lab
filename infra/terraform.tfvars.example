@@ -1,0 +1,8 @@
+# Hetzner Cloud API token
+hcloud_token = "your-hetzner-api-token-here"
+
+# Whether to create a base template server
+create_base_template = false
+
+# SSH key IDs (optional)
+ssh_key_ids = []
