@@ -2,6 +2,8 @@
 
 A cybersecurity training platform where users can register, select challenges, and automatically receive isolated VM environments that last for 2 hours.
 
+> **🚀 Now powered by Cloudflare's edge infrastructure for global low-latency access!**
+
 ## 🎯 Features
 
 - **User Authentication**: Email/password registration and JWT-based login
@@ -10,29 +12,38 @@ A cybersecurity training platform where users can register, select challenges, a
 - **Public IPv4 Access**: VMs are publicly reachable with SSH credentials
 - **Auto-Expiration**: VMs automatically self-destruct after 2 hours
 - **Concurrent Support**: Designed to handle many participants simultaneously
-- **Cloud-Agnostic**: Pluggable cloud provider architecture (Hetzner Cloud default)
+- **Edge Computing**: Runs on Cloudflare's global network (300+ locations)
+- **Serverless Backend**: Zero server management with Cloudflare Workers
+- **Cloud Integration**: Hetzner Cloud for VM provisioning
 
 ## 🏗️ Architecture
 
 ### Technology Stack
 
-**Backend:**
-- FastAPI (Python) - High-performance async web framework
-- SQLAlchemy - ORM for database operations
-- Alembic - Database migrations
-- PostgreSQL - Relational database
-- APScheduler - Background job scheduling
-- JWT - Token-based authentication
+**Backend (Cloudflare Workers):**
+- TypeScript - Type-safe edge computing
+- Cloudflare Workers - Serverless compute at the edge
+- Cloudflare D1 - SQLite database at the edge
+- Cloudflare KV - Key-value storage for sessions
+- Web Crypto API - JWT authentication
+- Hono-style routing - Fast request routing
+- Cron Triggers - Scheduled VM cleanup
 
-**Frontend:**
-- Next.js (React + TypeScript) - Server-side rendered React framework
+**Frontend (Cloudflare Pages):**
+- Next.js 14 (React + TypeScript) - Static site generation
 - Axios - HTTP client
-- CSS - Minimal styling (functionality over polish)
+- Static Export - Pre-rendered pages for maximum performance
+- Cloudflare CDN - Global content delivery
 
 **Infrastructure:**
-- Terraform - Infrastructure as Code for Hetzner Cloud
-- Docker Compose - Local development environment
-- Hetzner Cloud - Default cloud provider (easily swappable)
+- Hetzner Cloud - VM provisioning and management
+- Wrangler CLI - Cloudflare deployment tool
+- GitHub - Version control and CI/CD
+
+**Legacy Stack (backend/):**
+- FastAPI (Python) - Original backend implementation
+- PostgreSQL - Original database
+- Docker Compose - Local development option
 
 ### Cloud Provider Abstraction
 
@@ -45,54 +56,50 @@ The platform uses a provider abstraction layer (`CloudProvider` interface) makin
 
 ```
 cyberbros-lab/
-├── backend/                    # FastAPI backend
+├── workers/                    # Cloudflare Workers backend (PRIMARY)
 │   ├── src/
-│   │   ├── cloud_providers/   # Cloud provider drivers
-│   │   │   ├── base.py        # Abstract interface
-│   │   │   ├── hetzner.py     # Hetzner implementation
-│   │   │   └── mock.py        # Mock for testing
-│   │   ├── models/            # Database models
-│   │   │   ├── user.py
-│   │   │   ├── challenge.py
-│   │   │   └── vm_instance.py
-│   │   ├── routes/            # API endpoints
-│   │   │   ├── auth.py
-│   │   │   ├── challenges.py
-│   │   │   └── vms.py
+│   │   ├── index.ts           # Main Worker entry point
+│   │   ├── types.ts           # TypeScript interfaces
+│   │   ├── routes/            # API route handlers
+│   │   │   ├── auth.ts        # Authentication endpoints
+│   │   │   ├── challenges.ts  # Challenge endpoints
+│   │   │   └── vms.ts         # VM provisioning endpoints
 │   │   ├── services/          # Business logic
-│   │   │   ├── auth_service.py
-│   │   │   ├── challenge_service.py
-│   │   │   └── vm_service.py
-│   │   ├── schemas/           # Pydantic schemas
-│   │   ├── utils/             # Utilities (auth, etc.)
-│   │   ├── config.py          # Configuration
-│   │   ├── database.py        # Database setup
-│   │   ├── scheduler.py       # Background jobs
-│   │   └── main.py            # Application entry point
-│   ├── alembic/               # Database migrations
-│   ├── requirements.txt
-│   └── Dockerfile
+│   │   │   └── hetzner.ts     # Hetzner Cloud integration
+│   │   └── utils/             # Helper functions
+│   │       ├── auth.ts        # JWT utilities
+│   │       └── response.ts    # HTTP response helpers
+│   ├── wrangler.toml          # Cloudflare configuration
+│   ├── schema.sql             # D1 database schema
+│   └── package.json
 ├── frontend/                   # Next.js frontend
 │   ├── src/
 │   │   ├── components/        # React components
+│   │   │   └── CountdownTimer.tsx
 │   │   ├── lib/               # API client, auth
+│   │   │   ├── api.ts         # API client
+│   │   │   └── auth.ts        # Auth utilities
 │   │   ├── pages/             # Next.js pages
-│   │   │   ├── login.tsx
-│   │   │   ├── register.tsx
-│   │   │   ├── dashboard.tsx
-│   │   │   └── vm/[challengeId].tsx
+│   │   │   ├── index.tsx      # Landing page
+│   │   │   ├── login.tsx      # Login page
+│   │   │   ├── register.tsx   # Registration page
+│   │   │   ├── dashboard.tsx  # Dashboard
+│   │   │   └── vm/[challengeId].tsx  # VM details
 │   │   └── styles/
-│   ├── package.json
-│   └── Dockerfile
-├── infra/                      # Terraform infrastructure
-│   ├── main.tf
-│   ├── variables.tf
-│   └── README.md
+│   │       └── globals.css
+│   ├── next.config.js
+│   └── package.json
+├── backend/                    # Legacy FastAPI backend
+│   └── ...                    # (Original Python implementation)
 ├── docs/                       # Documentation
-│   ├── architecture.md
-│   └── api.md
-├── docker-compose.yml
-├── .env.example
+│   ├── cloudflare-deployment.md      # Deployment guide
+│   ├── development-workflow.md       # Development process
+│   ├── quick-reference.md            # Command reference
+│   ├── architecture.md               # System architecture
+│   └── api.md                        # API documentation
+├── infra/                      # Terraform infrastructure
+│   ├── main.tf                # Hetzner Cloud resources
+│   └── variables.tf
 └── README.md
 ```
 
@@ -100,10 +107,10 @@ cyberbros-lab/
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Node.js 20+ (for local frontend development)
-- Python 3.11+ (for local backend development)
-- PostgreSQL 15+ (or use Docker)
+- **Node.js 18+** (for development)
+- **Cloudflare account** (free tier works)
+- **Hetzner Cloud account** (for VM provisioning)
+- **Wrangler CLI** (installed via npm)
 
 ### Local Development Setup
 
@@ -113,69 +120,58 @@ cyberbros-lab/
    cd cyberbros-lab
    ```
 
-2. **Set up environment variables:**
+2. **Authenticate with Cloudflare:**
    ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` and configure:
-   - Database connection
-   - JWT secret
-   - Cloud provider (use `mock` for local testing)
-
-3. **Start with Docker Compose:**
-   ```bash
-   docker-compose up -d
+   npx wrangler login
    ```
 
-   This starts:
-   - PostgreSQL (port 5432)
-   - Backend API (port 8000)
-   - Frontend (port 3000)
+3. **Set up backend (Workers):**
+   ```bash
+   cd workers
+   npm install
+   
+   # Create local D1 database
+   npx wrangler d1 create cyberbros_db
+   # Copy database ID to wrangler.toml
+   
+   # Initialize database
+   npx wrangler d1 execute cyberbros_db --local --file=./schema.sql
+   
+   # Start development server
+   npm run dev  # Runs on http://localhost:8787
+   ```
 
-4. **Access the application:**
+4. **Set up frontend:**
+   ```bash
+   cd frontend
+   npm install
+   
+   # Start development server
+   npm run dev  # Runs on http://localhost:3000
+   ```
+
+5. **Access the application:**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Docs: http://localhost:8000/docs
+   - Backend API: http://localhost:8787
+   - Try registering and exploring challenges!
 
-### Manual Setup (without Docker)
+### Production Deployment
 
-#### Backend
+See the comprehensive guides:
+- **[Cloudflare Deployment Guide](./docs/cloudflare-deployment.md)** - Complete deployment instructions
+- **[Development Workflow](./docs/development-workflow.md)** - Git workflow and best practices
+- **[Quick Reference](./docs/quick-reference.md)** - Common commands and troubleshooting
 
+**Quick deployment:**
 ```bash
-cd backend
+# Deploy backend
+cd workers
+npx wrangler deploy
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variables
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cyberbros"
-export JWT_SECRET="your-secret-key"
-export CLOUD_PROVIDER="mock"
-
-# Run migrations
-alembic upgrade head
-
-# Start server
-uvicorn src.main:app --reload
-```
-
-#### Frontend
-
-```bash
+# Deploy frontend
 cd frontend
-
-# Install dependencies
-npm install
-
-# Set environment variable
-export NEXT_PUBLIC_API_URL="http://localhost:8000"
-
-# Start development server
-npm run dev
+NEXT_PUBLIC_API_URL=https://your-worker.workers.dev npm run build
+npx wrangler pages deploy out --project-name cyberbros-lab-frontend
 ```
 
 ## 🔧 Configuration
@@ -300,9 +296,15 @@ The mock provider simulates VM creation without actual cloud resources, perfect 
 
 ## 📚 Documentation
 
-- **Architecture**: See `docs/architecture.md`
-- **API Reference**: See `docs/api.md`
-- **Infrastructure**: See `infra/README.md`
+### Essential Guides
+- **[Cloudflare Deployment](./docs/cloudflare-deployment.md)** - Deploy to production
+- **[Development Workflow](./docs/development-workflow.md)** - Git workflow, branching, releases
+- **[Quick Reference](./docs/quick-reference.md)** - Common commands and tips
+
+### Technical Documentation
+- **[Architecture](./docs/architecture.md)** - System design and components
+- **[API Reference](./docs/api.md)** - Endpoint documentation
+- **[Quickstart](./docs/quickstart.md)** - Getting started guide
 
 ## 🔒 Security Considerations
 
@@ -324,12 +326,20 @@ The mock provider simulates VM creation without actual cloud resources, perfect 
 
 ## 📈 Scaling Considerations
 
-- **Horizontal scaling**: Backend is stateless
-- **Database**: Use connection pooling
-- **VM provisioning**: Consider async queue (Celery/Redis)
-- **Cleanup**: Distribute scheduler across workers
-- **Multi-region**: Deploy in multiple cloud regions
-- **Load balancing**: Use reverse proxy (nginx)
+### Cloudflare Edge Benefits
+- **Global deployment**: Runs in 300+ locations worldwide
+- **Auto-scaling**: Handles traffic spikes automatically
+- **Zero cold starts**: Sub-50ms response times
+- **Built-in DDoS protection**: Enterprise-grade security
+- **No server management**: Focus on code, not infrastructure
+
+### Free Tier Limits
+- **Workers**: 100,000 requests/day
+- **D1 Database**: 5 GB storage, 5 million reads/day
+- **KV Storage**: 100,000 reads/day, 1,000 writes/day
+- **Pages**: Unlimited static requests
+
+Perfect for small-medium cybersecurity labs (1-50 concurrent users)
 
 ## 🤝 Contributing
 

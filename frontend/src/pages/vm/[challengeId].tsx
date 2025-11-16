@@ -83,22 +83,22 @@ export default function VMDetails() {
           <div className="vm-info">
             <div className="vm-info-item">
               <label>Status:</label>
-              <value style={{ color: vm.status === 'running' ? '#00ff41' : '#f57c00' }}>
+              <span style={{ color: vm.status === 'running' ? '#00ff41' : '#f57c00' }}>
                 {vm.status.toUpperCase()}
-              </value>
+              </span>
             </div>
             <div className="vm-info-item">
               <label>IP Address:</label>
-              <value>{vm.public_ip || 'Provisioning...'}</value>
+              <span>{vm.ip_address || 'Provisioning...'}</span>
             </div>
             <div className="vm-info-item">
-              <label>SSH Username:</label>
-              <value>{vm.ssh_username}</value>
+              <label>SSH Port:</label>
+              <span>{vm.ssh_port || 'N/A'}</span>
             </div>
             {vm.ssh_password && (
               <div className="vm-info-item">
                 <label>SSH Password:</label>
-                <value>{vm.ssh_password}</value>
+                <span>{vm.ssh_password}</span>
               </div>
             )}
           </div>
@@ -106,7 +106,7 @@ export default function VMDetails() {
           <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#0a0a0a', borderRadius: '4px' }}>
             <h3 style={{ color: '#00ff41', marginBottom: '10px' }}>Connection Command</h3>
             <pre style={{ color: '#e0e0e0', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-              ssh {vm.ssh_username}@{vm.public_ip}
+              ssh root@{vm.ip_address}{vm.ssh_port && vm.ssh_port !== 22 ? ` -p ${vm.ssh_port}` : ''}
             </pre>
             {vm.ssh_password && (
               <p style={{ color: '#b0b0b0', marginTop: '10px', fontSize: '0.9rem' }}>

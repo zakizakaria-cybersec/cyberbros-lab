@@ -1,0 +1,58 @@
+name = "cyberbros-lab-workers"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Worker settings
+workers_dev = true
+
+# Bindings
+# Bindings
+[[d1_databases]]
+binding = "DB"
+database_name = "cyberbros_db"
+database_id = "7d59b638-a630-4334-af9b-8c900ca65021"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "570ac3ef4eda4744ac2a831e910db1c1"
+
+# Durable Objects (optional - commented out for now)
+# [[durable_objects.bindings]]
+# name = "VM_STATUS"
+# class_name = "VMStatus"
+# script_name = "cyberbros-lab-workers"
+
+# Cron trigger for VM cleanup (every 5 minutes)
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Environment variables (non-sensitive)
+[vars]
+ENVIRONMENT = "development"
+JWT_EXPIRATION_MINUTES = "1440"
+VM_DEFAULT_LIFETIME_HOURS = "2"
+VM_CLEANUP_INTERVAL_MINUTES = "5"
+HETZNER_API_BASE_URL = "https://api.hetzner.cloud/v1"
+
+# Secrets (set via: wrangler secret put <NAME>)
+# JWT_SECRET
+# HETZNER_API_TOKEN
+
+# Production environment
+[env.production]
+name = "cyberbros-lab-workers-production"
+workers_dev = false
+route = { pattern = "api.cyberbros-lab.com/*", zone_name = "cyberbros-lab.com" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "cyberbros_db_prod"
+database_id = "your-prod-database-id-here"
+
+[[env.production.kv_namespaces]]
+binding = "SESSIONS"
+id = "your-prod-kv-namespace-id-here"
+
+[env.production.vars]
+ENVIRONMENT = "production"
