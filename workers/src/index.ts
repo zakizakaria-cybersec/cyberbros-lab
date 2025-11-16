@@ -1,3 +1,5 @@
+// test ci-cd automation
+
 import { Env } from './types';
 import { corsResponse, errorResponse } from './utils/response';
 import { register, login, getCurrentUser } from './routes/auth';
