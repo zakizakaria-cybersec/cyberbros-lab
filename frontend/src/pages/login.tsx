@@ -19,7 +19,25 @@ export default function Login() {
     try {
       const data = await authApi.login(email, password);
       setToken(data.access_token);
-      router.push('/dashboard');
+      
+      // Decode token to check user role
+      const token = data.access_token;
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const decoded = JSON.parse(jsonPayload);
+      
+      // Redirect based on role
+      if (decoded.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');
     } finally {

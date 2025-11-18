@@ -45,4 +45,8 @@ class AuthService:
     @staticmethod
     def create_user_token(user: User) -> str:
         """Create access token for user"""
-        return create_access_token(data={"sub": str(user.id)})
+        return create_access_token(data={
+            "sub": user.email,
+            "id": user.id,
+            "role": user.role
+        })

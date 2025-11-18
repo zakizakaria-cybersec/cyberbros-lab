@@ -56,22 +56,27 @@ def get_current_user(
     token = credentials.credentials
     payload = verify_token(token)
     
-    user_id_str: str = payload.get("sub")
-    if user_id_str is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
+    # Try to get user by ID first (new token format)
+    user_id = payload.get("id")
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+    else:
+        # Fall back to email (sub field) for backwards compatibility
+        user_email: str = payload.get("sub")
+        if user_email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        
+        # Check if sub is an ID (old format) or email (new format)
+        try:
+            user_id = int(user_email)
+            user = db.query(User).filter(User.id == user_id).first()
+        except (ValueError, TypeError):
+            # It's an email
+            user = db.query(User).filter(User.email == user_email).first()
     
-    try:
-        user_id = int(user_id_str)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-    
-    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
