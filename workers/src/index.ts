@@ -5,7 +5,8 @@ import { corsResponse, errorResponse } from './utils/response';
 import { register, login, getCurrentUser } from './routes/auth';
 import { getChallenges, getChallenge } from './routes/challenges';
 import { startChallenge, getChallengeStatus, getUserVMs } from './routes/vms';
-import { destroyHetznerVM } from './services/hetzner';
+import { handleProvisioningCallback, handleLogCallback } from './routes/provisioning';
+import { GitHubActionsService } from './services/github-actions';
 
 export default {
   /**
@@ -78,6 +79,15 @@ export default {
         return getUserVMs(request, env);
       }
 
+      // Provisioning callback routes (called by GitHub Actions)
+      if (path === '/api/provisioning/callback' && method === 'POST') {
+        return handleProvisioningCallback(request, env);
+      }
+      
+      if (path === '/api/provisioning/callback/log' && method === 'POST') {
+        return handleLogCallback(request, env);
+      }
+
       // 404 - Not Found
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
@@ -114,24 +124,30 @@ export default {
 
       console.log(`Found ${results?.length || 0} expired VMs`);
 
-      // Destroy each expired VM
+      // Destroy each expired VM via GitHub Actions
       for (const vm of results || []) {
         try {
-          const destroyed = await destroyHetznerVM(env, vm.instance_id as string);
+          // Trigger destroy workflow
+          const triggered = await GitHubActionsService.triggerDestroyWorkflow(
+            env, 
+            vm.id as number,
+            vm.provider as string || 'hetzner'
+          );
           
-          if (destroyed) {
+          if (triggered) {
+            // Mark as destroying
             await env.DB.prepare(`
-              UPDATE vm_instances 
-              SET status = ?, destroyed_at = datetime("now")
+              UPDATE instances 
+              SET status = ?
               WHERE id = ?
-            `).bind('destroyed', vm.id).run();
+            `).bind('destroying', vm.id).run();
             
-            console.log(`Destroyed VM ${vm.instance_id}`);
+            console.log(`Triggered destroy for VM ${vm.id}`);
           } else {
-            console.error(`Failed to destroy VM ${vm.instance_id}`);
+            console.error(`Failed to trigger destroy for VM ${vm.id}`);
           }
         } catch (error) {
-          console.error(`Error destroying VM ${vm.instance_id}:`, error);
+          console.error(`Error destroying VM ${vm.id}:`, error);
         }
       }
 

@@ -1,7 +1,7 @@
 import { Env, Challenge, VMInstance, StartChallengeRequest, VMInfoResponse } from '../types';
 import { jsonResponse, errorResponse, successResponse } from '../utils/response';
 import { getUserIdFromRequest } from '../utils/auth';
-import { createHetznerVM } from '../services/hetzner';
+import { GitHubActionsService } from '../services/github-actions';
 
 /**
  * Start a challenge (provision VM)
@@ -34,50 +34,73 @@ export async function startChallenge(request: Request, env: Env): Promise<Respon
       return errorResponse('You already have a running VM for this challenge', 409);
     }
 
-    // Calculate expiration time
-    const lifetimeHours = parseInt(env.VM_DEFAULT_LIFETIME_HOURS || '2');
+    // Calculate expiration time (use challenge duration if available)
+    const lifetimeHours = challenge.duration_hours || parseInt(env.VM_DEFAULT_LIFETIME_HOURS || '2');
     const expiresAt = new Date(Date.now() + lifetimeHours * 60 * 60 * 1000).toISOString();
 
-    // Create VM on Hetzner
+    // Create VM instance record with provisioning status
     const vmName = `lab-${challenge_id}-${userId}-${Date.now()}`;
-    const vmInfo = await createHetznerVM(
-      env,
-      challenge.snapshot_id,
-      vmName,
-      expiresAt,
-      challenge.cpu_count,
-      challenge.memory_gb
-    );
-
-    // Store VM instance in database
     const result = await env.DB.prepare(`
-      INSERT INTO vm_instances (
-        user_id, challenge_id, instance_id, public_ip,
-        ssh_username, ssh_password, status, created_at, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"), ?)
+      INSERT INTO instances (
+        user_id, challenge_id, provider, status, created_at, expires_at
+      ) VALUES (?, ?, ?, ?, datetime("now"), ?)
       RETURNING id
     `).bind(
       userId,
       challenge_id,
-      vmInfo.id,
-      vmInfo.ip,
-      'root',
-      vmInfo.password,
-      'running',
+      'scaleway', // Primary provider
+      'provisioning',
       expiresAt
     ).first();
 
-    const response: VMInfoResponse = {
-      instance_id: vmInfo.id,
-      public_ip: vmInfo.ip,
-      ssh_username: 'root',
-      ssh_password: vmInfo.password,
-      status: 'running',
+    const instanceId = (result as any).id;
+
+    // Log provisioning start
+    await env.DB.prepare(`
+      INSERT INTO provisioning_logs (instance_id, event_type, provider, message, created_at)
+      VALUES (?, ?, ?, ?, datetime("now"))
+    `).bind(
+      instanceId,
+      'provisioning_started',
+      'scaleway',
+      `Started provisioning VM for challenge: ${challenge.name}`
+    ).run();
+
+    // Trigger GitHub Actions workflow for VM provisioning
+    const triggered = await GitHubActionsService.enqueueProvisioningJob(env, {
+      instance_id: instanceId,
+      instance_name: vmName,
+      challenge_id: challenge.id,
+      challenge_name: challenge.name,
+      user_id: userId,
       expires_at: expiresAt,
-      time_remaining_minutes: lifetimeHours * 60
+      cpu_count: challenge.cpu_count,
+      memory_gb: challenge.memory_gb
+    });
+
+    if (!triggered) {
+      // Update status to failed
+      await env.DB.prepare(`
+        UPDATE instances SET status = 'failed' WHERE id = ?
+      `).bind(instanceId).run();
+      
+      return errorResponse('Failed to trigger VM provisioning', 500);
+    }
+
+    // Return provisioning status
+    const response = {
+      id: instanceId,
+      instance_id: null,
+      public_ip: null,
+      ssh_username: null,
+      ssh_password: null,
+      status: 'provisioning',
+      expires_at: expiresAt,
+      time_remaining_minutes: lifetimeHours * 60,
+      message: 'VM provisioning initiated. Check status in a moment.'
     };
 
-    return successResponse(response, 'VM provisioned successfully');
+    return successResponse(response, 'VM provisioning started');
   } catch (error) {
     console.error('Start challenge error:', error);
     return errorResponse('Failed to start challenge', 500);

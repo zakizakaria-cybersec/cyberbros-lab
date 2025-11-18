@@ -1,0 +1,221 @@
+name: Provision VM
+
+on:
+  repository_dispatch:
+    types: [provision-vm]
+
+env:
+  TF_VAR_scaleway_access_key: ${{ secrets.SCALEWAY_ACCESS_KEY }}
+  TF_VAR_scaleway_secret_key: ${{ secrets.SCALEWAY_SECRET_KEY }}
+  TF_VAR_scaleway_project_id: ${{ secrets.SCALEWAY_PROJECT_ID }}
+  TF_VAR_hetzner_token: ${{ secrets.HETZNER_API_TOKEN }}
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: false
+
+      - name: Extract job payload
+        id: payload
+        run: |
+          echo "instance_name=${{ github.event.client_payload.instance_name }}" >> $GITHUB_OUTPUT
+          echo "instance_id=${{ github.event.client_payload.instance_id }}" >> $GITHUB_OUTPUT
+          echo "challenge_name=${{ github.event.client_payload.challenge_name }}" >> $GITHUB_OUTPUT
+          echo "challenge_id=${{ github.event.client_payload.challenge_id }}" >> $GITHUB_OUTPUT
+          echo "user_id=${{ github.event.client_payload.user_id }}" >> $GITHUB_OUTPUT
+          echo "expires_at=${{ github.event.client_payload.expires_at }}" >> $GITHUB_OUTPUT
+          echo "cpu_count=${{ github.event.client_payload.cpu_count }}" >> $GITHUB_OUTPUT
+          echo "memory_gb=${{ github.event.client_payload.memory_gb }}" >> $GITHUB_OUTPUT
+          echo "callback_url=${{ github.event.client_payload.callback_url }}" >> $GITHUB_OUTPUT
+          echo "provider_primary=scaleway" >> $GITHUB_OUTPUT
+
+      - name: Initialize Terraform (Scaleway)
+        id: init_scaleway
+        working-directory: ./infra
+        run: |
+          terraform init \
+            -backend-config="bucket=cyberbros-terraform-state" \
+            -backend-config="key=vms/${{ steps.payload.outputs.instance_id }}/terraform.tfstate" \
+            -backend-config="region=auto" \
+            -backend-config="endpoint=${{ secrets.R2_ENDPOINT }}" \
+            -backend-config="access_key=${{ secrets.R2_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.R2_SECRET_KEY }}" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_metadata_api_check=true"
+
+      - name: Provision VM on Scaleway
+        id: provision_scaleway
+        working-directory: ./infra
+        continue-on-error: true
+        run: |
+          terraform apply -auto-approve \
+            -var="provider_primary=scaleway" \
+            -var="instance_name=${{ steps.payload.outputs.instance_name }}" \
+            -var="instance_id=${{ steps.payload.outputs.instance_id }}" \
+            -var="challenge_name=${{ steps.payload.outputs.challenge_name }}" \
+            -var="challenge_id=${{ steps.payload.outputs.challenge_id }}" \
+            -var="user_id=${{ steps.payload.outputs.user_id }}" \
+            -var="expires_at=${{ steps.payload.outputs.expires_at }}" \
+            -var="cpu_count=${{ steps.payload.outputs.cpu_count }}" \
+            -var="memory_gb=${{ steps.payload.outputs.memory_gb }}"
+          
+          if [ $? -eq 0 ]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "provider=scaleway" >> $GITHUB_OUTPUT
+            
+            # Extract outputs
+            INSTANCE_ID=$(terraform output -raw instance_id)
+            PUBLIC_IP=$(terraform output -raw public_ip)
+            SSH_USERNAME=$(terraform output -raw ssh_username)
+            SSH_PASSWORD=$(terraform output -raw ssh_password)
+            
+            echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+            echo "public_ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
+            echo "ssh_username=$SSH_USERNAME" >> $GITHUB_OUTPUT
+            echo "ssh_password=$SSH_PASSWORD" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cleanup Scaleway resources on failure
+        if: steps.provision_scaleway.outputs.success != 'true'
+        working-directory: ./infra
+        continue-on-error: true
+        run: |
+          echo "Scaleway provisioning failed, cleaning up partial resources..."
+          terraform destroy -auto-approve \
+            -var="provider_primary=scaleway" \
+            -var="instance_name=${{ steps.payload.outputs.instance_name }}" \
+            -var="instance_id=${{ steps.payload.outputs.instance_id }}" \
+            -var="challenge_name=${{ steps.payload.outputs.challenge_name }}" \
+            -var="challenge_id=${{ steps.payload.outputs.challenge_id }}" \
+            -var="user_id=${{ steps.payload.outputs.user_id }}" \
+            -var="expires_at=${{ steps.payload.outputs.expires_at }}" \
+            -var="cpu_count=${{ steps.payload.outputs.cpu_count }}" \
+            -var="memory_gb=${{ steps.payload.outputs.memory_gb }}"
+
+      - name: Log Scaleway failure and prepare Hetzner fallback
+        if: steps.provision_scaleway.outputs.success != 'true'
+        run: |
+          echo "⚠️ Scaleway provisioning failed, initiating Hetzner fallback..."
+          curl -X POST "${{ steps.payload.outputs.callback_url }}/log" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CALLBACK_TOKEN }}" \
+            -d '{
+              "instance_id": "${{ steps.payload.outputs.instance_id }}",
+              "event_type": "provider_fallback",
+              "provider": "hetzner",
+              "message": "Scaleway provisioning failed, falling back to Hetzner"
+            }'
+
+      - name: Provision VM on Hetzner (Fallback)
+        id: provision_hetzner
+        if: steps.provision_scaleway.outputs.success != 'true'
+        working-directory: ./infra
+        run: |
+          # Reinitialize for new state
+          rm -rf .terraform terraform.tfstate*
+          
+          terraform init \
+            -backend-config="bucket=cyberbros-terraform-state" \
+            -backend-config="key=vms/${{ steps.payload.outputs.instance_id }}/terraform.tfstate" \
+            -backend-config="region=auto" \
+            -backend-config="endpoint=${{ secrets.R2_ENDPOINT }}" \
+            -backend-config="access_key=${{ secrets.R2_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.R2_SECRET_KEY }}" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_metadata_api_check=true"
+          
+          terraform apply -auto-approve \
+            -var="provider_primary=hetzner" \
+            -var="instance_name=${{ steps.payload.outputs.instance_name }}" \
+            -var="instance_id=${{ steps.payload.outputs.instance_id }}" \
+            -var="challenge_name=${{ steps.payload.outputs.challenge_name }}" \
+            -var="challenge_id=${{ steps.payload.outputs.challenge_id }}" \
+            -var="user_id=${{ steps.payload.outputs.user_id }}" \
+            -var="expires_at=${{ steps.payload.outputs.expires_at }}" \
+            -var="cpu_count=${{ steps.payload.outputs.cpu_count }}" \
+            -var="memory_gb=${{ steps.payload.outputs.memory_gb }}"
+          
+          # Extract outputs
+          INSTANCE_ID=$(terraform output -raw instance_id)
+          PUBLIC_IP=$(terraform output -raw public_ip)
+          SSH_USERNAME=$(terraform output -raw ssh_username)
+          SSH_PASSWORD=$(terraform output -raw ssh_password)
+          
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "public_ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
+          echo "ssh_username=$SSH_USERNAME" >> $GITHUB_OUTPUT
+          echo "ssh_password=$SSH_PASSWORD" >> $GITHUB_OUTPUT
+          echo "provider=hetzner" >> $GITHUB_OUTPUT
+
+      - name: Send success callback
+        if: steps.provision_scaleway.outputs.success == 'true' || steps.provision_hetzner.conclusion == 'success'
+        run: |
+          PROVIDER="${{ steps.provision_scaleway.outputs.provider || steps.provision_hetzner.outputs.provider }}"
+          INSTANCE_ID="${{ steps.provision_scaleway.outputs.instance_id || steps.provision_hetzner.outputs.instance_id }}"
+          PUBLIC_IP="${{ steps.provision_scaleway.outputs.public_ip || steps.provision_hetzner.outputs.public_ip }}"
+          SSH_USERNAME="${{ steps.provision_scaleway.outputs.ssh_username || steps.provision_hetzner.outputs.ssh_username }}"
+          SSH_PASSWORD="${{ steps.provision_scaleway.outputs.ssh_password || steps.provision_hetzner.outputs.ssh_password }}"
+          
+          curl -X POST "${{ steps.payload.outputs.callback_url }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CALLBACK_TOKEN }}" \
+            -d "{
+              \"success\": true,
+              \"instance_id\": \"${{ steps.payload.outputs.instance_id }}\",
+              \"cloud_instance_id\": \"$INSTANCE_ID\",
+              \"provider\": \"$PROVIDER\",
+              \"public_ip\": \"$PUBLIC_IP\",
+              \"ssh_username\": \"$SSH_USERNAME\",
+              \"ssh_password\": \"$SSH_PASSWORD\"
+            }"
+
+      - name: Send failure callback
+        if: failure()
+        run: |
+          curl -X POST "${{ steps.payload.outputs.callback_url }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CALLBACK_TOKEN }}" \
+            -d "{
+              \"success\": false,
+              \"instance_id\": \"${{ steps.payload.outputs.instance_id }}\",
+              \"error\": \"Failed to provision VM on both Scaleway and Hetzner\"
+            }"
+
+      - name: Schedule destroy job
+        if: steps.provision_scaleway.outputs.success == 'true' || steps.provision_hetzner.conclusion == 'success'
+        run: |
+          # Calculate delay until expiration
+          EXPIRES_AT="${{ steps.payload.outputs.expires_at }}"
+          EXPIRES_EPOCH=$(date -d "$EXPIRES_AT" +%s)
+          NOW_EPOCH=$(date +%s)
+          DELAY_SECONDS=$((EXPIRES_EPOCH - NOW_EPOCH))
+          
+          echo "VM will be destroyed in $DELAY_SECONDS seconds"
+          
+          # Trigger destroy workflow with delay (using workflow_dispatch with delay)
+          # Or use a scheduled GitHub Action / external scheduler
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d "{
+              \"event_type\": \"destroy-vm\",
+              \"client_payload\": {
+                \"instance_id\": \"${{ steps.payload.outputs.instance_id }}\",
+                \"provider\": \"${{ steps.provision_scaleway.outputs.provider || steps.provision_hetzner.outputs.provider }}\",
+                \"destroy_at\": \"$EXPIRES_AT\"
+              }
+            }"

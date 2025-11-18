@@ -34,10 +34,14 @@ JWT_EXPIRATION_MINUTES = "1440"
 VM_DEFAULT_LIFETIME_HOURS = "2"
 VM_CLEANUP_INTERVAL_MINUTES = "5"
 HETZNER_API_BASE_URL = "https://api.hetzner.cloud/v1"
+GITHUB_REPO = "zakizakaria-cybersec/cyberbros-lab"
+BACKEND_URL = "https://cyberbros-lab-workers.bidguru94.workers.dev"
 
 # Secrets (set via: wrangler secret put <NAME>)
 # JWT_SECRET
-# HETZNER_API_TOKEN
+# GITHUB_TOKEN
+# CALLBACK_TOKEN
+# HETZNER_API_TOKEN (optional - for direct API fallback)
 
 # Production environment
 [env.production]

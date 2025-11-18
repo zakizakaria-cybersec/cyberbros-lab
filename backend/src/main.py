@@ -2,7 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
-from .routes import auth_router, challenges_router, vms_router
+from .routes import (
+    auth_router,
+    challenges_router,
+    vms_router,
+    user_router,
+    admin_challenges_router,
+    admin_assignments_router,
+    admin_monitoring_router
+)
 from .database import engine, SessionLocal
 from .models import User, Challenge, VMInstance
 from .database import Base
@@ -67,7 +75,11 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(challenges_router)
-app.include_router(vms_router)
+app.include_router(vms_router)  # Legacy routes
+app.include_router(user_router)
+app.include_router(admin_challenges_router)
+app.include_router(admin_assignments_router)
+app.include_router(admin_monitoring_router)
 
 
 @app.get("/")

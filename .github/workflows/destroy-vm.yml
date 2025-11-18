@@ -1,0 +1,70 @@
+name: Destroy VM
+
+on:
+  repository_dispatch:
+    types: [destroy-vm]
+  workflow_dispatch:
+    inputs:
+      instance_id:
+        description: 'Backend instance ID'
+        required: true
+      provider:
+        description: 'Cloud provider (scaleway/hetzner)'
+        required: true
+
+env:
+  TF_VAR_scaleway_access_key: ${{ secrets.SCALEWAY_ACCESS_KEY }}
+  TF_VAR_scaleway_secret_key: ${{ secrets.SCALEWAY_SECRET_KEY }}
+  TF_VAR_scaleway_project_id: ${{ secrets.SCALEWAY_PROJECT_ID }}
+  TF_VAR_hetzner_token: ${{ secrets.HETZNER_API_TOKEN }}
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: false
+
+      - name: Extract instance ID
+        id: instance
+        run: |
+          INSTANCE_ID="${{ github.event.client_payload.instance_id || github.event.inputs.instance_id }}"
+          PROVIDER="${{ github.event.client_payload.provider || github.event.inputs.provider }}"
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "provider=$PROVIDER" >> $GITHUB_OUTPUT
+
+      - name: Initialize Terraform
+        working-directory: ./infra
+        run: |
+          terraform init \
+            -backend-config="bucket=cyberbros-terraform-state" \
+            -backend-config="key=vms/${{ steps.instance.outputs.instance_id }}/terraform.tfstate" \
+            -backend-config="region=auto" \
+            -backend-config="endpoint=${{ secrets.R2_ENDPOINT }}" \
+            -backend-config="access_key=${{ secrets.R2_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.R2_SECRET_KEY }}" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_metadata_api_check=true"
+
+      - name: Destroy VM
+        working-directory: ./infra
+        run: |
+          terraform destroy -auto-approve
+
+      - name: Notify backend of destruction
+        run: |
+          curl -X POST "${{ secrets.BACKEND_URL }}/api/admin/monitoring/instances/${{ steps.instance.outputs.instance_id }}/destroyed" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CALLBACK_TOKEN }}" \
+            -d "{
+              \"instance_id\": \"${{ steps.instance.outputs.instance_id }}\",
+              \"destroyed_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            }"
