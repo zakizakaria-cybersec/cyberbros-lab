@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { adminApi, userApi, User, Challenge, Assignment } from '../lib/api';
-import { getToken, getUser } from '../lib/auth';
+import { getToken, getUser, isAuthenticated } from '../lib/auth';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -15,11 +15,17 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+    
     const user = getUser();
     if (!user || user.role !== 'admin') {
       router.push('/login');
       return;
     }
+    
     loadData();
   }, []);
 
