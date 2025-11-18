@@ -3,14 +3,15 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from ..database import get_db
-from ..models import User, Challenge, Assignment, AssignmentStatus, VMInstance
+from ..models import User, Challenge, Assignment, AssignmentStatus, VMInstance, VMStatus
 from ..schemas import (
     ChallengeListResponse,
     VMStartRequest,
     VMResetRequest,
     VMStatusResponse,
     VMCredentialsResponse,
-    AssignmentWithDetails
+    AssignmentWithDetails,
+    UserAssignmentDetail
 )
 from ..services.vm_service import VMService
 from ..utils.auth import get_current_user
@@ -43,34 +44,53 @@ def get_assigned_challenges(
     return challenges
 
 
-@router.get("/assignments", response_model=List[AssignmentWithDetails])
+@router.get("/assignments", response_model=List[UserAssignmentDetail])
 def get_my_assignments(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    """Get all assignments for the current user"""
-    assignments = db.query(
-        Assignment,
-        Challenge.name.label("challenge_name"),
-        User.email.label("admin_email")
-    ).join(
+    """Get all assignments for the current user with challenge and VM details"""
+    # Get assignments with challenge details
+    assignments_query = db.query(Assignment, Challenge).join(
         Challenge, Assignment.challenge_id == Challenge.id
-    ).join(
-        User, Assignment.assigned_by == User.id
     ).filter(
         Assignment.user_id == user.id
     ).order_by(Assignment.assigned_at.desc()).all()
     
-    # Format response
     result = []
-    for assignment, challenge_name, admin_email in assignments:
-        assignment_dict = {
-            **assignment.__dict__,
-            "user_email": user.email,
-            "challenge_name": challenge_name,
-            "admin_email": admin_email
+    for assignment, challenge in assignments_query:
+        # Check for active VM for this assignment
+        vm_instance = db.query(VMInstance).filter(
+            VMInstance.assignment_id == assignment.id,
+            VMInstance.status.in_([VMStatus.PROVISIONING, VMStatus.RUNNING])
+        ).first()
+        
+        has_active_vm = vm_instance is not None
+        vm_instance_id = vm_instance.id if vm_instance else None
+        vm_status = vm_instance.status.value if vm_instance else None
+        vm_public_ip = vm_instance.public_ip if vm_instance else None
+        vm_expires_at = vm_instance.expires_at if vm_instance else None
+        
+        assignment_detail = {
+            "id": assignment.id,
+            "challenge_id": challenge.id,
+            "challenge_name": challenge.name,
+            "challenge_description": challenge.description,
+            "challenge_difficulty": challenge.difficulty,
+            "challenge_duration_hours": challenge.duration_hours,
+            "status": assignment.status.value,
+            "assigned_at": assignment.assigned_at,
+            "started_at": assignment.started_at,
+            "completed_at": assignment.completed_at,
+            "expires_at": assignment.expires_at,
+            "notes": assignment.notes,
+            "has_active_vm": has_active_vm,
+            "vm_instance_id": vm_instance_id,
+            "vm_status": vm_status,
+            "vm_public_ip": vm_public_ip,
+            "vm_expires_at": vm_expires_at
         }
-        result.append(assignment_dict)
+        result.append(assignment_detail)
     
     return result
 

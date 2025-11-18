@@ -153,9 +153,9 @@ CREATE INDEX IF NOT EXISTS idx_provisioning_logs_created_at ON provisioning_logs
 -- SEED DATA
 -- ============================================================================
 
--- Create default admin user (password should be changed immediately)
+-- Create default admin user (password: admin123 - SHA-256 hash)
 INSERT OR IGNORE INTO users (email, hashed_password, role) VALUES
-('admin@cyberbros.lab', '$2a$10$example.hash.change.this.immediately', 'admin');
+('admin@cyberbros.lab', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin');
 
 -- Seed challenges
 INSERT OR IGNORE INTO challenges (name, description, snapshot_id, difficulty, cpu_count, memory_gb, duration_hours, created_by) VALUES

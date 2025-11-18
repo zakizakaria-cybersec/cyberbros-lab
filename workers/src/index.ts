@@ -6,6 +6,15 @@ import { register, login, getCurrentUser } from './routes/auth';
 import { getChallenges, getChallenge } from './routes/challenges';
 import { startChallenge, getChallengeStatus, getUserVMs } from './routes/vms';
 import { handleProvisioningCallback, handleLogCallback } from './routes/provisioning';
+import { 
+  createAssignment, 
+  bulkCreateAssignments, 
+  getAllAssignments, 
+  getUserAssignments,
+  updateAssignment,
+  deleteAssignment 
+} from './routes/assignments';
+import { getAllUsers, getUserById } from './routes/users';
 import { GitHubActionsService } from './services/github-actions';
 
 export default {
@@ -77,6 +86,43 @@ export default {
       
       if (path === '/api/vms' && method === 'GET') {
         return getUserVMs(request, env);
+      }
+
+      // Assignment routes
+      if (path === '/api/user/assignments' && method === 'GET') {
+        return getUserAssignments(request, env);
+      }
+      
+      if (path === '/api/admin/assignments' && method === 'GET') {
+        return getAllAssignments(request, env);
+      }
+      
+      if (path === '/api/admin/assignments' && method === 'POST') {
+        return createAssignment(request, env);
+      }
+      
+      if (path === '/api/admin/assignments/bulk' && method === 'POST') {
+        return bulkCreateAssignments(request, env);
+      }
+      
+      if (path.match(/^\/api\/admin\/assignments\/\d+$/) && method === 'PUT') {
+        const assignmentId = path.split('/')[4];
+        return updateAssignment(request, env, assignmentId);
+      }
+      
+      if (path.match(/^\/api\/admin\/assignments\/\d+$/) && method === 'DELETE') {
+        const assignmentId = path.split('/')[4];
+        return deleteAssignment(request, env, assignmentId);
+      }
+      
+      // User routes (admin)
+      if (path === '/api/admin/users' && method === 'GET') {
+        return getAllUsers(request, env);
+      }
+      
+      if (path.match(/^\/api\/admin\/users\/\d+$/) && method === 'GET') {
+        const userId = path.split('/')[4];
+        return getUserById(request, env, userId);
       }
 
       // Provisioning callback routes (called by GitHub Actions)

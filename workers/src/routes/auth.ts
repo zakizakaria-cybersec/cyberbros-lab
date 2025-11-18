@@ -57,7 +57,7 @@ export async function login(request: Request, env: Env): Promise<Response> {
 
     // Find user
     const user = await env.DB.prepare(
-      'SELECT id, email, hashed_password FROM users WHERE email = ?'
+      'SELECT id, email, hashed_password, role FROM users WHERE email = ?'
     ).bind(email).first<User>();
 
     if (!user) {
@@ -71,7 +71,7 @@ export async function login(request: Request, env: Env): Promise<Response> {
     }
 
     // Create JWT token
-    const token = await createJWT(user.id, user.email, env);
+    const token = await createJWT(user.id, user.email, env, user.role || 'user');
 
     return jsonResponse({
       access_token: token,

@@ -28,9 +28,25 @@ class Settings(BaseSettings):
     debug: bool = True
     environment: str = "development"
     
+    # Encryption (for VM credentials)
+    encryption_key: Optional[str] = None
+    
+    # Additional provider settings (optional)
+    cloud_provider_fallback: Optional[str] = None
+    scaleway_api_token: Optional[str] = None
+    scaleway_project_id: Optional[str] = None
+    scaleway_zone: Optional[str] = None
+    backend_url: Optional[str] = None
+    database_host: Optional[str] = None
+    database_port: Optional[int] = None
+    database_name: Optional[str] = None
+    database_user: Optional[str] = None
+    database_password: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra environment variables
 
 
 settings = Settings()

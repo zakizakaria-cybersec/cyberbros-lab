@@ -14,7 +14,7 @@ export async function startChallenge(request: Request, env: Env): Promise<Respon
     }
 
     const body: StartChallengeRequest = await request.json();
-    const { challenge_id } = body;
+    const { challenge_id, assignment_id } = body;
 
     // Get challenge details
     const challenge = await env.DB.prepare(
@@ -38,16 +38,26 @@ export async function startChallenge(request: Request, env: Env): Promise<Respon
     const lifetimeHours = challenge.duration_hours || parseInt(env.VM_DEFAULT_LIFETIME_HOURS || '2');
     const expiresAt = new Date(Date.now() + lifetimeHours * 60 * 60 * 1000).toISOString();
 
+    // Update assignment status if applicable
+    if (assignment_id) {
+      await env.DB.prepare(`
+        UPDATE assignments 
+        SET status = 'in_progress', started_at = datetime('now')
+        WHERE id = ? AND status = 'assigned'
+      `).bind(assignment_id).run();
+    }
+
     // Create VM instance record with provisioning status
     const vmName = `lab-${challenge_id}-${userId}-${Date.now()}`;
     const result = await env.DB.prepare(`
       INSERT INTO instances (
-        user_id, challenge_id, provider, status, created_at, expires_at
-      ) VALUES (?, ?, ?, ?, datetime("now"), ?)
+        user_id, challenge_id, assignment_id, provider, status, created_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, datetime("now"), ?)
       RETURNING id
     `).bind(
       userId,
       challenge_id,
+      assignment_id || null,
       'scaleway', // Primary provider
       'provisioning',
       expiresAt

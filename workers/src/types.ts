@@ -126,6 +126,7 @@ export interface LoginResponse {
 
 export interface StartChallengeRequest {
   challenge_id: number;
+  assignment_id?: number;
 }
 
 export interface VMInfoResponse {

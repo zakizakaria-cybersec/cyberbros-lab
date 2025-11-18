@@ -1,7 +1,7 @@
 import { Env, JWTPayload } from '../types';
 
 /**
- * Hash a password using Web Crypto API
+ * Hash a password using SHA-256
  */
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -12,7 +12,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 /**
- * Verify a password against a hash
+ * Verify a password against a SHA-256 hash
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   const passwordHash = await hashPassword(password);
@@ -22,7 +22,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 /**
  * Create a JWT token
  */
-export async function createJWT(userId: number, email: string, env: Env): Promise<string> {
+export async function createJWT(userId: number, email: string, env: Env, role: string = 'user'): Promise<string> {
   const header = {
     alg: 'HS256',
     typ: 'JWT'
@@ -34,6 +34,7 @@ export async function createJWT(userId: number, email: string, env: Env): Promis
   const payload: JWTPayload = {
     sub: userId.toString(),
     email,
+    role: role as 'user' | 'admin',
     exp: now + (expirationMinutes * 60),
     iat: now
   };
@@ -139,4 +140,15 @@ export async function getUserIdFromRequest(request: Request, env: Env): Promise<
   if (!payload) return null;
 
   return parseInt(payload.sub);
+}
+
+/**
+ * Check if user is admin
+ */
+export async function requireAdmin(userId: number, env: Env): Promise<boolean> {
+  const user = await env.DB.prepare(
+    'SELECT role FROM users WHERE id = ?'
+  ).bind(userId).first();
+
+  return user && (user as any).role === 'admin';
 }

@@ -9,7 +9,8 @@ from .routes import (
     user_router,
     admin_challenges_router,
     admin_assignments_router,
-    admin_monitoring_router
+    admin_monitoring_router,
+    admin_users_router
 )
 from .database import engine, SessionLocal
 from .models import User, Challenge, VMInstance
@@ -80,6 +81,7 @@ app.include_router(user_router)
 app.include_router(admin_challenges_router)
 app.include_router(admin_assignments_router)
 app.include_router(admin_monitoring_router)
+app.include_router(admin_users_router)
 
 
 @app.get("/")
