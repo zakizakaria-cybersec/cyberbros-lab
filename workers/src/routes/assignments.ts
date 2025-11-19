@@ -172,9 +172,9 @@ export async function getAllAssignments(request: Request, env: Env): Promise<Res
         c.name as challenge_name,
         admin.email as admin_email
       FROM assignments a
-      JOIN users u ON a.user_id = u.id
-      JOIN challenges c ON a.challenge_id = c.id
-      JOIN users admin ON a.assigned_by = admin.id
+      LEFT JOIN users u ON a.user_id = u.id
+      LEFT JOIN challenges c ON a.challenge_id = c.id
+      LEFT JOIN users admin ON a.assigned_by = admin.id
       WHERE 1=1
     `;
 
@@ -197,12 +197,16 @@ export async function getAllAssignments(request: Request, env: Env): Promise<Res
 
     query += ' ORDER BY a.assigned_at DESC';
 
-    const { results } = await env.DB.prepare(query).bind(...params).all();
+    // Log for debugging
+    console.log(`Executing assignments query: ${query} with params: ${JSON.stringify(params)}`);
+
+    const stmt = env.DB.prepare(query);
+    const { results } = await (params.length > 0 ? stmt.bind(...params) : stmt).all();
 
     return successResponse(results || [], 'Assignments retrieved successfully');
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get assignments error:', error);
-    return errorResponse('Failed to get assignments', 500);
+    return errorResponse(`Failed to get assignments: ${error.message || error.toString()}`, 500);
   }
 }
 

@@ -3,7 +3,7 @@
 import { Env } from './types';
 import { corsResponse, errorResponse } from './utils/response';
 import { register, login, getCurrentUser } from './routes/auth';
-import { getChallenges, getChallenge } from './routes/challenges';
+import { getChallenges, getChallenge, createChallenge, deleteChallenge } from './routes/challenges';
 import { startChallenge, getChallengeStatus, getUserVMs } from './routes/vms';
 import { handleProvisioningCallback, handleLogCallback } from './routes/provisioning';
 import { 
@@ -69,9 +69,22 @@ export default {
         return getChallenges(request, env);
       }
       
+      if (path === '/api/admin/challenges' && method === 'GET') {
+        return getChallenges(request, env);
+      }
+      
+      if (path === '/api/admin/challenges' && method === 'POST') {
+        return createChallenge(request, env);
+      }
+      
       if (path.match(/^\/api\/challenges\/\d+$/) && method === 'GET') {
         const challengeId = path.split('/')[3];
         return getChallenge(challengeId, request, env);
+      }
+
+      if (path.match(/^\/api\/admin\/challenges\/\d+$/) && method === 'DELETE') {
+        const challengeId = path.split('/')[4];
+        return deleteChallenge(request, env, challengeId);
       }
 
       // VM routes

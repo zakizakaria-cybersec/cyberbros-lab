@@ -31,12 +31,17 @@ export async function getAllUsers(request: Request, env: Env): Promise<Response>
 
     query += ' ORDER BY created_at DESC';
 
-    const { results } = await env.DB.prepare(query).bind(...params).all();
+    // Log for debugging
+    console.log(`Executing query: ${query} with params: ${JSON.stringify(params)}`);
+
+    const stmt = env.DB.prepare(query);
+    const { results } = await (params.length > 0 ? stmt.bind(...params) : stmt).all();
 
     return successResponse(results || [], 'Users retrieved successfully');
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get users error:', error);
-    return errorResponse('Failed to get users', 500);
+    // Return the full error object for debugging
+    return errorResponse(`Failed to get users: ${error.message || error.toString()}`, 500);
   }
 }
 
