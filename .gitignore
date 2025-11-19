@@ -46,7 +46,7 @@ build/
 *.swp
 *.swo
 *~
-
+.env
 # Terraform
 *.tfstate
 *.tfstate.*

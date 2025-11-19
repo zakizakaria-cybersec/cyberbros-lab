@@ -84,11 +84,22 @@ export async function getChallenges(request: Request, env: Env): Promise<Respons
       return errorResponse('Unauthorized', 401);
     }
 
-    const { results } = await env.DB.prepare(
-      'SELECT id, name, description, difficulty, cpu_count, memory_gb FROM challenges'
-    ).all<Challenge>();
+    const isAdmin = await requireAdmin(userId, env);
 
-    return jsonResponse(results || []);
+    if (isAdmin) {
+      const { results } = await env.DB.prepare(
+        'SELECT id, name, description, difficulty, cpu_count, memory_gb FROM challenges'
+      ).all<Challenge>();
+      return jsonResponse(results || []);
+    } else {
+      const { results } = await env.DB.prepare(
+        `SELECT c.id, c.name, c.description, c.difficulty, c.cpu_count, c.memory_gb 
+         FROM challenges c
+         JOIN assignments a ON c.id = a.challenge_id
+         WHERE a.user_id = ?`
+      ).bind(userId).all<Challenge>();
+      return jsonResponse(results || []);
+    }
   } catch (error) {
     console.error('Get challenges error:', error);
     return errorResponse('Failed to get challenges', 500);

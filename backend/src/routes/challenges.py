@@ -5,6 +5,7 @@ from ..database import get_db
 from ..schemas.challenge import ChallengeResponse
 from ..services.challenge_service import ChallengeService
 from ..utils.auth import get_current_user
+from ..models.user import UserRole
 
 router = APIRouter(prefix="/api", tags=["challenges"])
 
@@ -15,5 +16,8 @@ def get_challenges(
     user = Depends(get_current_user)
 ):
     """Get all available challenges"""
-    challenges = ChallengeService.get_all_challenges(db)
+    if user.role == UserRole.ADMIN:
+        challenges = ChallengeService.get_all_challenges(db)
+    else:
+        challenges = ChallengeService.get_user_challenges(db, user.id)
     return challenges

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..models.challenge import Challenge
+from ..models.assignment import Assignment
 from fastapi import HTTPException, status
 
 
@@ -11,6 +12,11 @@ class ChallengeService:
     def get_all_challenges(db: Session) -> List[Challenge]:
         """Get all available challenges"""
         return db.query(Challenge).all()
+    
+    @staticmethod
+    def get_user_challenges(db: Session, user_id: int) -> List[Challenge]:
+        """Get challenges assigned to a specific user"""
+        return db.query(Challenge).join(Assignment).filter(Assignment.user_id == user_id).all()
     
     @staticmethod
     def get_challenge_by_id(db: Session, challenge_id: int) -> Challenge:
